@@ -11,11 +11,10 @@ A Python tool that predicts satellite passes over a ground station for the curre
 
 ```
 ASTE566-Pass-Predictor/
-├── aste566_pass_predictor.py   # Main prediction script
+├── satpp.py                     # Main application (TUI)
 ├── ground_station.json          # Ground station configuration
 ├── norad_ids.txt                # List of satellites to track
-├── requirements.txt             # Python dependencies
-├── output/                      # Generated CSV reports
+├── output/                      # Generated CSV reports (auto-exported)
 └── README.md
 ```
 
@@ -24,30 +23,34 @@ ASTE566-Pass-Predictor/
 - Python 3.9+
 - Internet connection (for fetching TLEs and frequency data)
 
-## Setup
+Dependencies (`skyfield`, `requests`) are installed automatically on first run.
+
+## Usage
 
 ```bash
-# Create and activate a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+python satpp.py
 ```
 
-### Dependencies
+The main view shows the pass prediction table. Type commands directly and press Enter:
 
-| Package       | Purpose                                    |
-|---------------|--------------------------------------------|
-| `skyfield`    | SGP4/SDP4 orbital propagation              |
-| `prettytable` | Formatted console output                   |
-| `requests`    | HTTP requests to CelesTrak and SatNOGS     |
+| Command | Action |
+|---------|--------|
+| `help`  | Show all keybindings and commands |
+| `cfg`   | Edit ground station config (name, lat, lon, altitude, min elevation) |
+| `sats`  | Manage satellite tracking list (add, remove, save) |
+| `run`   | Run pass predictions |
+| `export`| Re-export results to CSV |
+| `quit`  | Exit |
+
+CSV is automatically exported to `output/` after each prediction run.
+
+**Keyboard shortcuts:** `R` run, `E` export CSV, `↑↓` navigate, `PgUp/PgDn` scroll, `ESC` close panel, `Q` quit.
 
 ## Configuration
 
 ### Ground Station (`ground_station.json`)
 
-Defines the observer location. All fields are required.
+Defines the observer location. All fields are required. Editable from the TUI via the `cfg` command.
 
 ```json
 {
@@ -69,7 +72,7 @@ Defines the observer location. All fields are required.
 
 ### Satellite List (`norad_ids.txt`)
 
-One satellite per line. Format: `NORAD_ID [optional name]`. Lines starting with `#` are comments.
+One satellite per line. Format: `NORAD_ID [optional name]`. Lines starting with `#` are comments. Editable from the TUI via the `sats` command.
 
 ```
 # NORAD ID list — one per line
@@ -79,33 +82,9 @@ One satellite per line. Format: `NORAD_ID [optional name]`. Lines starting with 
 60246 CATSAT
 ```
 
-To add or remove satellites, simply edit this file. NORAD catalog IDs can be found at [CelesTrak](https://celestrak.org/satcat/search.php) or [N2YO](https://www.n2yo.com/).
-
-## Usage
-
-```bash
-# Activate virtual environment
-source venv/bin/activate
-
-# Run the pass predictor
-python aste566_pass_predictor.py
-```
-
-The script will:
-
-1. Load ground station parameters from `ground_station.json`
-2. Read satellite NORAD IDs from `norad_ids.txt`
-3. Fetch current TLE data from CelesTrak for each satellite
-4. Query SatNOGS for downlink frequency and antenna type (UHF or S-Band)
-5. Compute all passes above the minimum elevation for the current week (Monday 00:00 – Sunday 23:59, local time)
-6. Print a summary table to the console
-7. Export results to a CSV file in the `output/` directory
+NORAD catalog IDs can be found at [CelesTrak](https://celestrak.org/satcat/search.php) or [N2YO](https://www.n2yo.com/).
 
 ## Output
-
-### Console
-
-Prints a tab-separated table with pass details including AOS/LOS times in both UTC and local time.
 
 ### CSV Export
 
@@ -127,17 +106,17 @@ Saved to `output/passes_YYYY-MM-DD_to_YYYY-MM-DD.csv` with the following columns
 
 ## How It Works
 
-1. **TLE Fetching** — Retrieves Two-Line Element sets from CelesTrak's GP API (`/NORAD/elements/gp.php`)
+1. **TLE Fetching** — Retrieves Two-Line Element sets from CelesTrak's GP API
 2. **Frequency Lookup** — Queries SatNOGS transmitter database for active downlink frequencies; classifies as UHF (< 1 GHz) or S-Band (>= 1 GHz)
 3. **Pass Prediction** — Uses Skyfield's `EarthSatellite` with a 60-second coarse scan to detect elevation threshold crossings, then refines AOS/LOS to ~1 second accuracy via bisection
 4. **Time Window** — Automatically computes the current week (Monday–Sunday) in the local timezone
 
 ## Customization
 
-- **Change ground station:** Edit `ground_station.json` with your station's coordinates
-- **Change satellites:** Edit `norad_ids.txt` to add/remove NORAD IDs
+- **Change ground station:** Type `cfg` in the TUI or edit `ground_station.json`
+- **Change satellites:** Type `sats` in the TUI or edit `norad_ids.txt`
 - **Change minimum elevation:** Modify `min_elevation_deg` in `ground_station.json`
-- **Change group assignment:** Edit the `DEFAULT_GRP` variable in `aste566_pass_predictor.py`
+- **Change group assignment:** Edit the `DEFAULT_GRP` variable in `satpp.py`
 
 ## Troubleshooting
 

@@ -1,3 +1,0 @@
-skyfield>=1.46
-prettytable>=3.9
-requests>=2.31
