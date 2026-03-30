@@ -70,6 +70,7 @@ def load_ground_station(path: str) -> dict:
     for key in ("latitude", "longitude", "altitude_m", "min_elevation_deg"):
         if key not in gs:
             sys.exit(f"Error: '{key}' missing from ground station config.")
+    gs.setdefault("week_offset", 0)
     return gs
 
 
@@ -116,9 +117,9 @@ def fetch_frequency_info(norad_id: str) -> tuple[str, str]:
 
 # ── Time ──────────────────────────────────────────────────────
 
-def get_week_boundaries() -> tuple[datetime, datetime]:
+def get_week_boundaries(week_offset: int = 0) -> tuple[datetime, datetime]:
     now = datetime.now().astimezone()
-    monday = now - timedelta(days=now.weekday())
+    monday = now - timedelta(days=now.weekday()) + timedelta(weeks=week_offset)
     start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=7) - timedelta(seconds=1)
     return start, end
@@ -403,9 +404,9 @@ class App:
 
     # ── Config ────────────────────────────────────────────────
 
-    CFG_KEYS = ["name", "latitude", "longitude", "altitude_m", "min_elevation_deg"]
+    CFG_KEYS = ["name", "latitude", "longitude", "altitude_m", "min_elevation_deg", "week_offset"]
     CFG_LABELS = ["Station Name", "Latitude (Degrees North)", "Longitude (Degrees East)",
-                  "Altitude (Meters ASL)", "Minimum Elevation (Degrees)"]
+                  "Altitude (Meters ASL)", "Minimum Elevation (Degrees)", "Week Offset (0=this week, 1=next week)"]
 
     def _cfg_action(self):
         if self.psel < len(self.CFG_KEYS):
@@ -427,6 +428,14 @@ class App:
         val = self.inp.strip()
         if key == "name":
             self.gs[key] = val
+        elif key == "week_offset":
+            try:
+                v = int(val)
+                if v < 0:
+                    raise ValueError
+                self.gs[key] = v
+            except ValueError:
+                self.status = "Week offset must be a non-negative integer."
         else:
             try:
                 self.gs[key] = float(val)
@@ -476,7 +485,7 @@ class App:
     def _predict(self):
         try:
             ts = skyfield_load.timescale()
-            ws, we = get_week_boundaries()
+            ws, we = get_week_boundaries(int(self.gs.get("week_offset", 0)))
             t0 = ts.from_datetime(ws.astimezone(timezone.utc))
             t1 = ts.from_datetime(we.astimezone(timezone.utc))
             gs_pos = wgs84.latlon(self.gs["latitude"], self.gs["longitude"],
@@ -527,7 +536,7 @@ class App:
         if not self.passes:
             return None
         os.makedirs(OUTPUT_DIR, exist_ok=True)
-        ws, we = get_week_boundaries()
+        ws, we = get_week_boundaries(int(self.gs.get("week_offset", 0)))
         name = f"passes_{ws.strftime('%Y-%m-%d')}_to_{we.strftime('%Y-%m-%d')}.csv"
         path = os.path.join(OUTPUT_DIR, name)
         with open(path, "w", newline="") as f:
