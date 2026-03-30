@@ -1,7 +1,9 @@
 # ASTE 566 — Satellite Pass Predictor
 
 **Course:** ASTE 566 — Ground Communications for Satellite Operations
+
 **University of Southern California — Viterbi School of Engineering**
+
 **Author:** Irfan Annuar
 
 A Python TUI application that predicts satellite passes over a ground station for a selected week. It fetches live TLE data from [CelesTrak](https://celestrak.org/) or [Space-Track](https://www.space-track.org/) and downlink frequency information from [SatNOGS](https://db.satnogs.org/), then computes pass windows using vectorized SGP4/SDP4 propagation via [Skyfield](https://rhodesmill.org/skyfield/). Built with [Textual](https://textual.textualize.io/) for a modern terminal UI with USC cardinal and gold theming.
