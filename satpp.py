@@ -581,19 +581,21 @@ class App:
         # Separator
         self._put(1, 0, "─" * w, w, BOR)
 
-        # Status + inline progress
+        # Status bar
+        self._put(2, 0, f" {self.status}".ljust(w), w, TEXT)
+
+        # Progress bar (extra row when running)
         if self.running and self.progress[1] > 0:
             frac = self.progress[0] / self.progress[1]
             filled = int(frac * w)
-            pct = f" {int(frac * 100)}%  {self.status} "
-            # Draw filled portion with inverted colors, rest normal
-            self._put(2, 0, pct.ljust(w)[:filled], filled, curses.color_pair(C_BRAND))
-            self._put(2, filled, pct.ljust(w)[filled:], w - filled, GOLD)
+            pct = f" {int(frac * 100)}% ".ljust(w)
+            self._put(3, 0, pct[:filled], filled, curses.color_pair(C_BRAND))
+            self._put(3, filled, pct[filled:], w - filled, GOLD)
+            self._put(4, 0, "─" * w, w, BOR)
+            top = 5
         else:
-            self._put(2, 0, f" {self.status}".ljust(w), w, TEXT)
-
-        # Separator
-        self._put(3, 0, "─" * w, w, BOR)
+            self._put(3, 0, "─" * w, w, BOR)
+            top = 4
 
         # Bottom: separator + command
         self._put(h - 2, 0, "─" * w, w, BOR)
@@ -603,7 +605,6 @@ class App:
             self._put(h - 1, 0, "  R run  ·  E export  ·  Q quit  ·  type: help  cfg  sats".ljust(w), w, DIM)
 
         # Body
-        top = 4
         body_h = h - 2 - top
         pw = min(46, w * 2 // 5) if self.panel else 0
         tw = w - pw
