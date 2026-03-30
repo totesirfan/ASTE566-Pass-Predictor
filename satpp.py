@@ -71,7 +71,7 @@ SPACETRACK_LOGIN_URL = "https://www.space-track.org/ajaxauth/login"
 SPACETRACK_TLE_URL = "https://www.space-track.org/basicspacedata/query/class/gp/NORAD_CAT_ID/{ids}/orderby/NORAD_CAT_ID/format/3le"
 SATNOGS_URL = "https://db.satnogs.org/api/transmitters/"
 
-DEFAULT_GRP = "Group 5"
+DEFAULT_GRP = "Group 5"  # fallback if not in config
 CSV_HEADER = [
     "Pass #", "Satellite Name", "NORAD ID",
     "AOS (UTC)", "LOS (UTC)", "AOS (Local)", "LOS (Local)",
@@ -89,6 +89,7 @@ def load_ground_station(path: str) -> dict:
             sys.exit(f"Error: '{key}' missing from ground station config.")
     gs.setdefault("week_offset", 0)
     gs.setdefault("tle_source", "celestrak")
+    gs.setdefault("group", DEFAULT_GRP)
     return gs
 
 
@@ -303,7 +304,7 @@ def pass_to_csv_row(p: dict, idx: int) -> list:
         aos_l.strftime("%Y-%m-%d %H:%M:%S"),
         los_l.strftime("%Y-%m-%d %H:%M:%S"),
         format_duration(dur), round(p["max_el_deg"], 1),
-        DEFAULT_GRP, p.get("antenna", "N/A"),
+        p.get("group", DEFAULT_GRP), p.get("antenna", "N/A"),
     ]
 
 
@@ -660,7 +661,7 @@ class SatPassPredictor(App):
             self._rebuild_and_restore(idx)
             return
 
-        if key == "name":
+        if key in ("name", "group"):
             self.gs[key] = value
         elif key in ("latitude", "longitude", "altitude_m", "min_elevation_deg"):
             try:
@@ -816,6 +817,7 @@ class SatPassPredictor(App):
         ol.add_option(Option(Text(f"  Longitude: {self.gs.get('longitude', 0)}"), id="cfg_lon"))
         ol.add_option(Option(Text(f"  Altitude: {self.gs.get('altitude_m', 0)} m"), id="cfg_alt"))
         ol.add_option(Option(Text(f"  Min Elev: {self.gs.get('min_elevation_deg', 0)} deg"), id="cfg_elev"))
+        ol.add_option(Option(Text(f"  Group: {self.gs.get('group', DEFAULT_GRP)}"), id="cfg_group"))
         ol.add_option(None)
         week_label = f"  ◀ {ws.strftime('%b %d')} — {we.strftime('%b %d, %Y')} ▶"
         ol.add_option(Option(Text(week_label, style="bold #FFCC00"), id="cfg_week"))
@@ -840,6 +842,8 @@ class SatPassPredictor(App):
         ol.add_option(None)
         ol.add_option(Option(Text("  [ Save List ]", style="bold #FFCC00"), id="sat_save"))
         ol.add_option(Option(Text("  [ Delete Last ]", style="#aa3333"), id="sat_del"))
+        ol.add_option(None)
+        ol.add_option(Option(Text("  Tip: edit norad_ids.txt for bulk changes", style="dim"), disabled=True))
 
     def _build_help_panel(self, ol: OptionList) -> None:
         items = [
@@ -888,6 +892,8 @@ class SatPassPredictor(App):
             self._start_edit("altitude_m", "Altitude", str(self.gs.get("altitude_m", "")))
         elif oid == "cfg_elev":
             self._start_edit("min_elevation_deg", "Min Elev", str(self.gs.get("min_elevation_deg", "")))
+        elif oid == "cfg_group":
+            self._start_edit("group", "Group", str(self.gs.get("group", DEFAULT_GRP)))
         elif oid == "cfg_tle_ct":
             self.gs["tle_source"] = "celestrak"
             self._rebuild_and_restore(idx)
@@ -1046,7 +1052,7 @@ class SatPassPredictor(App):
 
                 sat = EarthSatellite(tle[1], tle[2], sat_name, ts)
                 for p in find_passes(sat, gs_pos, ts, t0, t1, min_el):
-                    p.update(sat_name=sat_name, norad_id=nid, frequency=freq, antenna=ant)
+                    p.update(sat_name=sat_name, norad_id=nid, frequency=freq, antenna=ant, group=self.gs.get("group", DEFAULT_GRP))
                     result.append(p)
 
             self._update_progress(100)
