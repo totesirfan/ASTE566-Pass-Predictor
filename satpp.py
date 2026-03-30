@@ -584,11 +584,11 @@ class App:
         # Status + inline progress
         if self.running and self.progress[1] > 0:
             frac = self.progress[0] / self.progress[1]
-            bw = min(20, w // 4)
-            filled = int(frac * bw)
-            bar = f" {'▓' * filled}{'░' * (bw - filled)} {int(frac * 100)}%  "
-            self._put(2, 0, bar, len(bar), GOLD)
-            self._put(2, len(bar), self.status.ljust(w - len(bar)), w - len(bar), TEXT)
+            filled = int(frac * w)
+            pct = f" {int(frac * 100)}%  {self.status} "
+            # Draw filled portion with inverted colors, rest normal
+            self._put(2, 0, pct.ljust(w)[:filled], filled, curses.color_pair(C_BRAND))
+            self._put(2, filled, pct.ljust(w)[filled:], w - filled, GOLD)
         else:
             self._put(2, 0, f" {self.status}".ljust(w), w, TEXT)
 
